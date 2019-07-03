@@ -2,23 +2,55 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
 	"os"
 )
 
-var count int
+//Root : The main doc
+type Root struct {
+	XMLName   xml.Name    `xml:"root"`
+	DataInput []DataInput `xml:"dataInput"`
+}
 
-//Node : contains the nodes of the payload
-type Node struct {
-	XMLName xml.Name
-	Nodes   []Node `xml:",any"`
-	Content []byte `xml:"innerxml"`
+//DataInput : contain the meat of the data
+type DataInput struct {
+	XMLName xml.Name  `xml:"dataInput"`
+	Hdr     []Hdr     `xml:"hdr"`
+	Payload []Payload `xml:"payload"`
+}
+
+//Hdr : has the top level data
+type Hdr struct {
+	XMLName xml.Name `xml:"hdr"`
+	Values  []Value  `xml:",any"`
+}
+
+//Payload : Contains all of the data
+type Payload struct {
+	XMLName xml.Name `xml:"payload"`
+	Values  []Value  `xml:",any"`
+}
+
+//Record : Contains all of the very important data
+type Record struct {
+	XMLName xml.Name `xml:"record"`
+	Values  []Value  `xml:",any"`
+}
+
+//Value : contains the nodes of the payload
+type Value struct {
+	Node    string
+	Content string
 }
 
 func main() {
+	processXML(findFile())
+	fmt.Println("The End********************")
+} // /Users/brianmarx/Desktop/baselineFake.txt
+
+func findFile() []byte {
 	fmt.Print("Enter the file name: ")
 	reader := bufio.NewReader(os.Stdin)
 
@@ -31,39 +63,33 @@ func main() {
 	if err != nil {
 		fmt.Println("Error opening the xml file", err)
 	}
-	// processXML(xmlFile)
-
-	buf := bytes.NewBuffer(xmlFile)
-	dec := xml.NewDecoder(buf)
-
-	var n Node
-	err = dec.Decode(&n)
-	if err != nil {
-		panic(err)
-	}
-
-	walk([]Node{n}, func(n Node) bool {
-		if n.XMLName.Local == "RECORD.KEY" {
-			fmt.Println(string(n.Content))
-		}
-		return true
-	})
-	fmt.Println("The End********************")
-} // /Users/brianmarx/go/src/NodeFindr/baselineFake.txt
-
-//UnmarshalXML : the XML nodes.
-func (n *Node) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
-	type node Node
-	count = count + 1
-	fmt.Println("called ", start.End)
-	return d.DecodeElement((*node)(n), &start)
-
+	return xmlFile
 }
 
-func walk(nodes []Node, f func(Node) bool) {
-	for _, n := range nodes {
-		if f(n) {
-			walk(n.Nodes, f)
-		}
+//ProcessXML : the XML nodes.
+func processXML(xmlFile []byte) {
+	var root Root
+
+	error := xml.Unmarshal(xmlFile, &root)
+	if error != nil {
+		fmt.Println(error)
 	}
+	processDataInput(root.DataInput, xmlFile)
+}
+
+func processDataInput(input []DataInput, xmlFile []byte) error {
+	var hdr Hdr
+	xml.Unmarshal(xmlFile, &hdr)
+	for index, element := range input {
+		fmt.Println(index)
+		fmt.Println(element)
+	}
+
+	for index, element := range hdr.Values {
+		fmt.Println("inside hdr loop")
+		fmt.Println(index)
+		fmt.Println(element)
+	}
+
+	return nil
 }
